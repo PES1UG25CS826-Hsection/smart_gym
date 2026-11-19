@@ -22,7 +22,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) setError(data.error || 'Login failed');
-      else router.push('/dashboard');
+      else router.push(`/${data.role}`);
     } catch {
       setError('Network error');
     }
