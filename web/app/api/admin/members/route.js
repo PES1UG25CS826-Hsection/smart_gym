@@ -53,8 +53,8 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, id: r.insertId }, { status: 201 });
   } catch (err) {
     if (err.errno === 1062) return bad('A member with this email already exists', 409);
-    if (err.errno === 3819) return bad('Phone or email format rejected by the database');
+    if (err.errno === 3819) return bad('Please check the phone number and email format');
     if (err.errno === 1452) return bad('Trainer not found');
-    return dbError(err); // 1644 from the date-of-birth trigger is shown as its message
+    return dbError(err); // rule violations from the database are shown as their message
   }
 }

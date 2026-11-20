@@ -1,13 +1,15 @@
 'use client';
 import { useState } from 'react';
+import { Plus } from 'lucide-react';
 import { useFetch } from '@/components/useFetch';
 import DataTable from '@/components/DataTable';
 import AnalyticsPanel from '@/components/AnalyticsPanel';
+import { PageHeader, Card, Notice, ErrorText, btnPrimary, fieldCls, linkAction, linkDanger } from '@/components/ui';
 
 const today = () => new Date().toISOString().slice(0, 10);
-const input = 'rounded-md border border-gray-300 px-3 py-2 text-sm';
+const label = 'mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-500';
 
-// "8x60, 8x62.5" -> [{reps:8, weight_kg:60}, {reps:8, weight_kg:62.5}]
+// "8x60, 8x62.5" becomes [{reps: 8, weight_kg: 60}, {reps: 8, weight_kg: 62.5}]
 function parseSets(text) {
   const sets = [];
   for (const part of text.split(',').map((p) => p.trim()).filter(Boolean)) {
@@ -26,7 +28,6 @@ export default function WorkoutsPage() {
   const [form, setForm] = useState({ date: today(), duration_min: 60, notes: '' });
   const [rows, setRows] = useState([{ exercise_id: '', sets: '' }]);
   const [msg, setMsg] = useState(null);
-
   const setRow = (i, patch) => setRows(rows.map((r, k) => (k === i ? { ...r, ...patch } : r)));
 
   async function submit(e) {
@@ -35,33 +36,20 @@ export default function WorkoutsPage() {
     const exercises = [];
     for (const [i, r] of rows.entries()) {
       const sets = parseSets(r.sets);
-      if (!r.exercise_id || !sets) {
-        return setMsg({ ok: false, text: `Exercise ${i + 1}: pick an exercise and enter sets like 8x60, 8x62.5` });
-      }
+      if (!r.exercise_id || !sets) return setMsg({ ok: false, text: `Exercise ${i + 1}: pick an exercise and enter sets like 8x60, 8x62.5` });
       exercises.push({ exercise_id: Number(r.exercise_id), sets });
     }
-    const res = await fetch('/api/member/workouts', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, exercises }),
-    });
+    const res = await fetch('/api/member/workouts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, exercises }) });
     const body = await res.json().catch(() => ({}));
-    if (res.ok) {
-      setMsg({ ok: true, text: 'Workout saved' });
-      setRows([{ exercise_id: '', sets: '' }]);
-      setForm({ ...form, notes: '' });
-      setV((n) => n + 1);
-    } else setMsg({ ok: false, text: body.error || 'Could not save' });
+    if (res.ok) { setMsg({ ok: true, text: 'Workout saved' }); setRows([{ exercise_id: '', sets: '' }]); setForm({ ...form, notes: '' }); setV((n) => n + 1); }
+    else setMsg({ ok: false, text: body.error || 'Could not save' });
   }
-
   async function editNote(l) {
     const text = window.prompt('Update note', l.notes || '');
     if (text === null) return;
-    await fetch(`/api/member/workouts/${l._id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: text }),
-    });
+    await fetch(`/api/member/workouts/${l._id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: text }) });
     setV((n) => n + 1);
   }
-
   async function remove(l) {
     if (!window.confirm('Delete this workout?')) return;
     await fetch(`/api/member/workouts/${l._id}`, { method: 'DELETE' });
@@ -69,57 +57,52 @@ export default function WorkoutsPage() {
   }
 
   const tableRows = (logs.data?.logs ?? []).map((l) => ({
-    date: l.date.slice(0, 10),
-    duration: `${l.duration_min} min`,
+    date: l.date.slice(0, 10), duration: `${l.duration_min} min`,
     exercises: l.exercises.map((e) => `${e.name} (${e.sets.map((s) => `${s.reps}x${s.weight_kg}`).join(', ')})`).join('; '),
     notes: l.notes || '-',
-    actions: (
-      <span className="space-x-3 whitespace-nowrap">
-        <button onClick={() => editNote(l)} className="text-blue-700 underline">Edit note</button>
-        <button onClick={() => remove(l)} className="text-red-600 underline">Delete</button>
-      </span>
-    ),
+    actions: (<span className="space-x-4 whitespace-nowrap"><button onClick={() => editNote(l)} className={linkAction}>Edit note</button><button onClick={() => remove(l)} className={linkDanger}>Delete</button></span>),
   }));
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold">Workout Log</h1>
-
-      <form onSubmit={submit} className="space-y-3 rounded-xl bg-white p-5 shadow-sm">
-        <h2 className="font-medium">Log a workout</h2>
-        <div className="flex flex-wrap gap-3">
-          <input type="date" value={form.date} max={today()} onChange={(e) => setForm({ ...form, date: e.target.value })} className={input} required />
-          <input type="number" min="1" max="600" value={form.duration_min} onChange={(e) => setForm({ ...form, duration_min: e.target.value })} className={`${input} w-28`} placeholder="Minutes" required />
-          <input value={form.notes} maxLength={500} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={`${input} flex-1 min-w-48`} placeholder="Notes (optional)" />
-        </div>
-        {rows.map((r, i) => (
-          <div key={i} className="flex flex-wrap gap-3">
-            <select value={r.exercise_id} onChange={(e) => setRow(i, { exercise_id: e.target.value })} className={input}>
-              <option value="">Choose exercise</option>
-              {(ex.data?.exercises ?? []).map((x) => <option key={x.id} value={x.id}>{x.name} ({x.muscle_group})</option>)}
-            </select>
-            <input value={r.sets} onChange={(e) => setRow(i, { sets: e.target.value })} className={`${input} flex-1 min-w-64`} placeholder="Sets as reps x kg, e.g. 8x60, 8x62.5, 6x65" />
-            {rows.length > 1 && <button type="button" onClick={() => setRows(rows.filter((_, k) => k !== i))} className="text-sm text-red-600">Remove</button>}
+      <PageHeader title="Workout log" subtitle="Record every session and watch your numbers climb." />
+      <Card title="Log a workout">
+        <form onSubmit={submit} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div><label className={label}>Date</label><input type="date" value={form.date} max={today()} onChange={(e) => setForm({ ...form, date: e.target.value })} className={fieldCls} required /></div>
+            <div><label className={label}>Duration (minutes)</label><input type="number" min="1" max="600" value={form.duration_min} onChange={(e) => setForm({ ...form, duration_min: e.target.value })} className={fieldCls} required /></div>
+            <div><label className={label}>Notes</label><input value={form.notes} maxLength={500} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={fieldCls} placeholder="Optional" /></div>
           </div>
-        ))}
-        <div className="flex items-center gap-3">
-          <button type="button" onClick={() => setRows([...rows, { exercise_id: '', sets: '' }])} className="text-sm text-blue-700 underline">+ Add exercise</button>
-          <button className="rounded-md bg-slate-800 px-4 py-2 text-sm text-white">Save workout</button>
-          {msg && <span className={msg.ok ? 'text-sm text-emerald-700' : 'text-sm text-red-600'}>{msg.text}</span>}
-        </div>
-      </form>
-
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Recent workouts</h2>
-        {logs.error && <p className="text-red-600">{logs.error}</p>}
-        <DataTable columns={[{ key: 'date', label: 'Date' }, { key: 'duration', label: 'Duration' }, { key: 'exercises', label: 'Exercises (reps x kg)' }, { key: 'notes', label: 'Notes' }, { key: 'actions', label: '' }]} rows={tableRows} />
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Your analytics (MongoDB aggregation)</h2>
-        {stats.error && <p className="text-red-600">{stats.error}</p>}
+          {rows.map((r, i) => (
+            <div key={i} className="grid gap-3 sm:grid-cols-[1fr_2fr_auto] sm:items-end">
+              <div>
+                <label className={label}>Exercise {i + 1}</label>
+                <select value={r.exercise_id} onChange={(e) => setRow(i, { exercise_id: e.target.value })} className={fieldCls}>
+                  <option value="">Choose exercise</option>
+                  {(ex.data?.exercises ?? []).map((x) => <option key={x.id} value={x.id}>{x.name} ({x.muscle_group})</option>)}
+                </select>
+              </div>
+              <div><label className={label}>Sets (reps x kg)</label><input value={r.sets} onChange={(e) => setRow(i, { sets: e.target.value })} className={fieldCls} placeholder="8x60, 8x62.5, 6x65" /></div>
+              {rows.length > 1 ? <button type="button" onClick={() => setRows(rows.filter((_, k) => k !== i))} className={`${linkDanger} pb-3`}>Remove</button> : <span />}
+            </div>
+          ))}
+          <div className="flex flex-wrap items-center gap-4">
+            <button type="button" onClick={() => setRows([...rows, { exercise_id: '', sets: '' }])} className={`${linkAction} inline-flex items-center gap-1`}><Plus size={16} /> Add exercise</button>
+            <button className={btnPrimary}>Save workout</button>
+          </div>
+        </form>
+      </Card>
+      <Notice ok={msg?.ok}>{msg?.text}</Notice>
+      <div className="space-y-3">
+        <h2 className="text-lg font-bold text-gray-900">Recent workouts</h2>
+        <ErrorText>{logs.error}</ErrorText>
+        <DataTable columns={[{ key: 'date', label: 'Date' }, { key: 'duration', label: 'Duration' }, { key: 'exercises', label: 'Exercises (reps x kg)' }, { key: 'notes', label: 'Notes' }, { key: 'actions', label: '' }]} rows={tableRows} empty="No workouts logged yet" />
+      </div>
+      <div className="space-y-3">
+        <h2 className="text-lg font-bold text-gray-900">Your training insights</h2>
+        <ErrorText>{stats.error}</ErrorText>
         {stats.data && <AnalyticsPanel data={stats.data} />}
-      </section>
+      </div>
     </div>
   );
 }

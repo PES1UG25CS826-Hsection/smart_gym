@@ -1,13 +1,8 @@
 'use client';
 import { useState } from 'react';
+import { Bell } from 'lucide-react';
 import { useFetch } from '@/components/useFetch';
-
-const Card = ({ label, value }) => (
-  <div className="rounded-xl bg-white p-5 shadow-sm">
-    <p className="text-sm text-gray-500">{label}</p>
-    <p className="mt-1 text-3xl font-semibold text-slate-800">{value}</p>
-  </div>
-);
+import { Hero, StatCard, Card, Notice, Loading, ErrorText, btnPrimary, btnGhostLight } from '@/components/ui';
 
 export default function MemberHome() {
   const [version, setVersion] = useState(0);
@@ -22,46 +17,40 @@ export default function MemberHome() {
     setMsg({ ok: res.ok, text: res.ok ? body.message : body.error || 'Request failed' });
     setVersion((v) => v + 1);
   }
-
   async function markRead() {
     await fetch('/api/member/notifications', { method: 'PATCH' });
     setVersion((v) => v + 1);
   }
 
-  if (loading && !data) return <p>Loading...</p>;
-  if (error) return <p className="text-red-600">{error}</p>;
+  if (loading && !data) return <Loading />;
+  if (error) return <ErrorText>{error}</ErrorText>;
   const s = data.summary;
   const list = notes.data?.notifications ?? [];
   const unread = list.filter((n) => !n.read).length;
+  const days = s?.days_left ?? 0;
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Hello, {s?.name}</h1>
+      <Hero kicker="Welcome back" title={s?.name}>
+        <button onClick={() => act('/api/member/checkin')} className={btnPrimary}>Check in</button>
+        <button onClick={() => act('/api/member/checkout')} className={btnGhostLight}>Check out</button>
+      </Hero>
+      <Notice ok={msg?.ok}>{msg?.text}</Notice>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card label="Membership days left" value={s?.days_left ?? 0} />
-        <Card label="Attendance (last 30 days)" value={`${s?.attendance_pct_30d ?? 0}%`} />
-        <Card label="Assigned trainer ID" value={s?.trainer_id ?? 'None'} />
+        <StatCard label="Membership" value={`${days} days`} hint={days > 0 ? 'left on your current plan' : 'Your plan has ended. Renew to keep training.'} />
+        <StatCard label="Attendance" value={`${Number(s?.attendance_pct_30d ?? 0).toFixed(0)}%`} hint="of the last 30 days" />
+        <StatCard label="Your trainer" value={s?.trainer_id ? `Trainer #${s.trainer_id}` : 'Not assigned'} hint="Book sessions from Appointments" />
       </div>
-      <div className="flex gap-3">
-        <button onClick={() => act('/api/member/checkin')} className="rounded-md bg-emerald-600 px-4 py-2 text-sm text-white">Check in</button>
-        <button onClick={() => act('/api/member/checkout')} className="rounded-md bg-slate-700 px-4 py-2 text-sm text-white">Check out</button>
-      </div>
-      {msg && <p className={msg.ok ? 'text-emerald-700' : 'text-red-600'}>{msg.text}</p>}
-
-      <section className="space-y-2">
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold">Notifications {unread > 0 && `(${unread} new)`}</h2>
-          {unread > 0 && <button onClick={markRead} className="text-sm text-blue-700 underline">Mark all read</button>}
-        </div>
-        {list.length === 0 ? <p className="text-sm text-gray-500">No notifications.</p> : (
-          <ul className="space-y-1 text-sm">
+      <Card title={`Notifications${unread ? ` (${unread} new)` : ''}`} action={unread > 0 && <button onClick={markRead} className="text-sm font-semibold underline decoration-[#d4ff3a] decoration-2 underline-offset-4">Mark all read</button>}>
+        {list.length === 0 ? <p className="py-4 text-center text-sm text-gray-400">You are all caught up.</p> : (
+          <ul className="space-y-2">
             {list.map((n) => (
-              <li key={n._id} className={`rounded border p-3 ${n.read ? 'bg-white text-gray-500' : 'bg-amber-50 border-amber-200'}`}>
-                {n.message}
+              <li key={n._id} className={`flex items-start gap-3 rounded-xl border p-3 text-sm ${n.read ? 'border-gray-100 text-gray-500' : 'border-[#d4ff3a] bg-[#d4ff3a]/15 text-gray-900'}`}>
+                <Bell size={16} className="mt-0.5 shrink-0" /> {n.message}
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </Card>
     </div>
   );
 }

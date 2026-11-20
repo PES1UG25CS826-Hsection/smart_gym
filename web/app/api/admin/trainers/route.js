@@ -42,7 +42,7 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, id: r.insertId }, { status: 201 });
   } catch (err) {
     if (err.errno === 1062) return bad('A trainer with this email already exists', 409);
-    if (err.errno === 3819) return bad('Phone format rejected by the database');
+    if (err.errno === 3819) return bad('Please check the phone number format');
     return dbError(err);
   }
 }

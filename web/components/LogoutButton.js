@@ -1,16 +1,15 @@
 'use client';
-import { useRouter } from 'next/navigation';
+import { LogOut } from 'lucide-react';
 
-export default function LogoutButton() {
-  const router = useRouter();
+export default function LogoutButton({ className = '' }) {
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
-    router.refresh();
+    // full page load so no form state or cached page survives the logout
+    window.location.assign('/login');
   }
   return (
-    <button onClick={logout} className="rounded bg-white/10 px-3 py-1 text-sm hover:bg-white/20">
-      Log out
+    <button onClick={logout} className={`inline-flex items-center gap-2 rounded-full border border-white/15 px-3.5 py-2 text-sm font-semibold text-white/90 transition hover:bg-white/10 ${className}`}>
+      <LogOut size={16} /> Log out
     </button>
   );
 }

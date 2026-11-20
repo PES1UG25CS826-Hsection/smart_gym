@@ -35,7 +35,11 @@ check('T05', 'Member calling an admin API returns 403', (await call('GET', '/api
 check('T06', 'Admin can read dashboard statistics', (await call('GET', '/api/admin/stats', { cookie: admin.cookie })).status === 200);
 const mem = await call('GET', '/api/admin/members', { cookie: admin.cookie });
 check('T07', 'Password hashes are never returned by member lists', mem.status === 200 && !/password/i.test(mem.text));
-check('T08', 'Trainer cannot view a member assigned to another trainer (403)', (await call('GET', '/api/trainer/member-analytics?memberId=4', { cookie: ravi.cookie })).status === 403);
+const raviMembers = (await call('GET', '/api/trainer/members', { cookie: ravi.cookie })).json?.members ?? [];
+const raviIds = new Set(raviMembers.map((m) => m.id));
+const otherMember = (mem.json?.members ?? []).find((m) => !raviIds.has(m.id));
+const t8 = otherMember ? await call('GET', `/api/trainer/member-analytics?memberId=${otherMember.id}`, { cookie: ravi.cookie }) : null;
+check('T08', 'Trainer cannot view a member assigned to another trainer (403)', !!t8 && t8.status === 403, t8 ? t8.text : 'no member outside Ravi\'s list found');
 
 const badWorkout = await call('POST', '/api/member/workouts', { cookie: arjun.cookie, body: { date: '2026-01-01', duration_min: 30, exercises: [{ exercise_id: 1, sets: [{ reps: 0, weight_kg: 50 }] }] } });
 check('T09', 'Workout with 0 reps is rejected (400)', badWorkout.status === 400, badWorkout.text);
@@ -53,7 +57,8 @@ if (slotA.json?.appointment_id) await call('DELETE', `/api/member/appointments/$
 const nehaIn = await call('POST', '/api/member/checkin', { cookie: neha.cookie });
 check('T13', 'Trigger blocks check-in for a member with an expired membership (400)', nehaIn.status === 400 && /active membership/i.test(nehaIn.text), nehaIn.text);
 
-const dup = await call('POST', '/api/trainer/plans', { cookie: ravi.cookie, body: { member_id: 1, goal: 'Test', start_date: '2030-01-01', end_date: '2030-02-01', exercises: [{ exercise_id: 1, set_count: 3, reps: 10 }, { exercise_id: 1, set_count: 3, reps: 10 }] } });
+const ownMember = raviMembers[0];
+const dup = ownMember ? await call('POST', '/api/trainer/plans', { cookie: ravi.cookie, body: { member_id: ownMember.id, goal: 'Test', start_date: '2030-01-01', end_date: '2030-02-01', exercises: [{ exercise_id: 1, set_count: 3, reps: 10 }, { exercise_id: 1, set_count: 3, reps: 10 }] } }) : { status: 0, text: 'Ravi has no assigned members' };
 check('T14', 'Plan with a duplicate exercise fails and is rolled back (409)', dup.status === 409, dup.text);
 
 const future = await call('POST', '/api/admin/members', { cookie: admin.cookie, body: { name: 'Test User', email: `t${Date.now()}@mail.com`, gender: 'M', dob: '2099-01-01', password: 'Test@12345' } });

@@ -14,7 +14,7 @@ export function toObjectId(id) {
 // 121 = rejected by the collection's JSON-schema validator, 11000 = duplicate key
 export function mongoError(err) {
   console.error(err);
-  if (err.code === 121) return NextResponse.json({ error: 'Rejected by database validation' }, { status: 400 });
+  if (err.code === 121) return NextResponse.json({ error: 'Some values are not valid. Please check your entries.' }, { status: 400 });
   if (err.code === 11000) return NextResponse.json({ error: 'That entry already exists' }, { status: 409 });
-  return NextResponse.json({ error: 'Database error' }, { status: 500 });
+  return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
 }

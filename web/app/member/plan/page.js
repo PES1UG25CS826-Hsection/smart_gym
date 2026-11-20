@@ -1,20 +1,24 @@
 'use client';
 import { useFetch } from '@/components/useFetch';
 import DataTable from '@/components/DataTable';
+import { PageHeader, Card, Loading, ErrorText } from '@/components/ui';
 
 export default function PlanPage() {
   const { data, error, loading } = useFetch('/api/member/plan');
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p className="text-red-600">{error}</p>;
+  if (loading) return <Loading />;
+  if (error) return <ErrorText>{error}</ErrorText>;
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold">My Workout Plans</h1>
-      {data.plans.length === 0 && <p className="text-gray-600">Your trainer has not created a plan for you yet.</p>}
+      <PageHeader title="My workout plan" subtitle="Programmes created for you by your trainer." />
+      {data.plans.length === 0 && <Card><p className="py-6 text-center text-sm text-gray-400">Your trainer has not created a plan for you yet.</p></Card>}
       {data.plans.map((p) => (
-        <section key={p.plan_id} className="space-y-2">
-          <h2 className="text-lg font-medium">{p.goal} <span className="text-sm font-normal text-gray-500">({p.start_date} to {p.end_date}, by {p.trainer})</span></h2>
-          {p.description && <p className="text-sm text-gray-600">{p.description}</p>}
-          <DataTable columns={[{ key: 'exercise', label: 'Exercise' }, { key: 'muscle_group', label: 'Muscle group' }, { key: 'set_count', label: 'Sets' }, { key: 'reps', label: 'Reps' }, { key: 'notes', label: 'Notes' }]} rows={p.exercises} />
+        <section key={p.plan_id} className="space-y-3">
+          <div className="rounded-2xl bg-[#0b0b0f] p-5 text-white">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#d4ff3a]">{p.start_date} to {p.end_date}</p>
+            <h2 className="mt-1 text-xl font-black uppercase tracking-tight">{p.goal}</h2>
+            <p className="mt-1 text-sm text-white/60">Coach {p.trainer}{p.description ? ` - ${p.description}` : ''}</p>
+          </div>
+          <DataTable columns={[{ key: 'exercise', label: 'Exercise' }, { key: 'muscle_group', label: 'Muscle group' }, { key: 'set_count', label: 'Sets' }, { key: 'reps', label: 'Reps' }, { key: 'notes', label: 'Coach notes' }]} rows={p.exercises} />
         </section>
       ))}
     </div>

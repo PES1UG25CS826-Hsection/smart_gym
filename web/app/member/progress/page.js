@@ -2,9 +2,10 @@
 import { useState } from 'react';
 import { useFetch } from '@/components/useFetch';
 import DataTable from '@/components/DataTable';
+import { PageHeader, Card, Notice, ErrorText, btnPrimary, fieldCls, linkDanger } from '@/components/ui';
 
 const today = () => new Date().toISOString().slice(0, 10);
-const input = 'rounded-md border border-gray-300 px-3 py-2 text-sm';
+const label = 'mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-500';
 
 export default function ProgressPage() {
   const [v, setV] = useState(0);
@@ -16,14 +17,11 @@ export default function ProgressPage() {
   async function submit(e) {
     e.preventDefault();
     setMsg(null);
-    const res = await fetch('/api/member/progress', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form),
-    });
+    const res = await fetch('/api/member/progress', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
     const body = await res.json().catch(() => ({}));
     if (res.ok) { setMsg({ ok: true, text: 'Saved' }); setV((n) => n + 1); }
     else setMsg({ ok: false, text: body.error || 'Could not save' });
   }
-
   async function remove(id) {
     if (!window.confirm('Delete this entry?')) return;
     await fetch(`/api/member/progress/${id}`, { method: 'DELETE' });
@@ -31,33 +29,26 @@ export default function ProgressPage() {
   }
 
   const rows = (list.data?.entries ?? []).map((en) => ({
-    date: en.date.slice(0, 10),
-    weight: en.weight_kg,
-    fat: en.body_fat_pct ?? '-',
-    chest: en.measurements?.chest_cm ?? '-',
-    waist: en.measurements?.waist_cm ?? '-',
-    actions: <button onClick={() => remove(en._id)} className="text-red-600 underline">Delete</button>,
+    date: en.date.slice(0, 10), weight: en.weight_kg, fat: en.body_fat_pct ?? '-', chest: en.measurements?.chest_cm ?? '-', waist: en.measurements?.waist_cm ?? '-',
+    actions: <button onClick={() => remove(en._id)} className={linkDanger}>Delete</button>,
   }));
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold">Body Progress</h1>
-      <form onSubmit={submit} className="space-y-3 rounded-xl bg-white p-5 shadow-sm">
-        <h2 className="font-medium">Add or update an entry (one per day)</h2>
-        <div className="flex flex-wrap gap-3">
-          <input name="date" type="date" value={form.date} max={today()} onChange={change} className={input} required />
-          <input name="weight_kg" type="number" step="0.1" placeholder="Weight (kg)" value={form.weight_kg} onChange={change} className={`${input} w-36`} required />
-          <input name="body_fat_pct" type="number" step="0.1" placeholder="Body fat %" value={form.body_fat_pct} onChange={change} className={`${input} w-32`} />
-          <input name="chest_cm" type="number" step="0.1" placeholder="Chest (cm)" value={form.chest_cm} onChange={change} className={`${input} w-32`} />
-          <input name="waist_cm" type="number" step="0.1" placeholder="Waist (cm)" value={form.waist_cm} onChange={change} className={`${input} w-32`} />
-        </div>
-        <div className="flex items-center gap-3">
-          <button className="rounded-md bg-slate-800 px-4 py-2 text-sm text-white">Save</button>
-          {msg && <span className={msg.ok ? 'text-sm text-emerald-700' : 'text-sm text-red-600'}>{msg.text}</span>}
-        </div>
-      </form>
-      {list.error && <p className="text-red-600">{list.error}</p>}
-      <DataTable columns={[{ key: 'date', label: 'Date' }, { key: 'weight', label: 'Weight (kg)' }, { key: 'fat', label: 'Body fat %' }, { key: 'chest', label: 'Chest (cm)' }, { key: 'waist', label: 'Waist (cm)' }, { key: 'actions', label: '' }]} rows={rows} />
+      <PageHeader title="Body progress" subtitle="One entry per day. Saving the same date again updates it." />
+      <Card title="Add an entry">
+        <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
+          <div><label className={label}>Date</label><input name="date" type="date" value={form.date} max={today()} onChange={change} className={fieldCls} required /></div>
+          <div><label className={label}>Weight (kg)</label><input name="weight_kg" type="number" step="0.1" value={form.weight_kg} onChange={change} className={fieldCls} required /></div>
+          <div><label className={label}>Body fat %</label><input name="body_fat_pct" type="number" step="0.1" value={form.body_fat_pct} onChange={change} className={fieldCls} /></div>
+          <div><label className={label}>Chest (cm)</label><input name="chest_cm" type="number" step="0.1" value={form.chest_cm} onChange={change} className={fieldCls} /></div>
+          <div><label className={label}>Waist (cm)</label><input name="waist_cm" type="number" step="0.1" value={form.waist_cm} onChange={change} className={fieldCls} /></div>
+          <div className="sm:col-span-2 lg:col-span-5"><button className={btnPrimary}>Save entry</button></div>
+        </form>
+      </Card>
+      <Notice ok={msg?.ok}>{msg?.text}</Notice>
+      <ErrorText>{list.error}</ErrorText>
+      <DataTable columns={[{ key: 'date', label: 'Date' }, { key: 'weight', label: 'Weight (kg)' }, { key: 'fat', label: 'Body fat %' }, { key: 'chest', label: 'Chest (cm)' }, { key: 'waist', label: 'Waist (cm)' }, { key: 'actions', label: '' }]} rows={rows} empty="No entries yet" />
     </div>
   );
 }

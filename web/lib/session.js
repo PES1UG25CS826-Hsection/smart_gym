@@ -19,5 +19,5 @@ export async function requireRole(request, ...roles) {
 export function dbError(err) {
   console.error(err);
   if (err.errno === 1644) return NextResponse.json({ error: err.sqlMessage }, { status: 400 });
-  return NextResponse.json({ error: 'Database error' }, { status: 500 });
+  return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
 }
